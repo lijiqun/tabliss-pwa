@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tabliss 壁纸</title>
+<link rel="manifest" href="pwa.json">
+<link rel="icon" href="icon-192.png">
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;background:#10151d}
+  iframe{border:0;width:100vw;height:100vh;display:block}
+</style>
+</head>
+<body>
+<iframe src="https://web.tabliss.io/" allow="fullscreen" title="Tabliss"></iframe>
+<script>
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+</script>
+</body>
+</html>
