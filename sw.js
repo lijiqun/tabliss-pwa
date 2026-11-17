@@ -1,6 +1,6 @@
 // 最小 Service Worker：仅为满足 Chrome PWA 安装条件（需注册 + fetch handler）。
 // 壳页自身离线兜底；Tabliss iframe 的请求照常走网络，不缓存。
-const SHELL = 'tabliss-shell-v1';
+const SHELL = 'tabliss-shell-v2';
 const SHELL_FILES = ['index.html', 'pwa.json', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', (e) => {
@@ -14,8 +14,8 @@ self.addEventListener('activate', (e) => {
 });
 
 self.addEventListener('fetch', (e) => {
-  // 仅对顶层导航兜底（离线时显示壳页），其余请求照常联网
+  // 顶层导航：强制绕过缓存拿最新壳页（离线才回落缓存），其余请求照常联网
   if (e.request.mode === 'navigate') {
-    e.respondWith(fetch(e.request).catch(() => caches.match('index.html')));
+    e.respondWith(fetch(e.request, { cache: 'no-store' }).catch(() => caches.match('index.html')));
   }
 });
