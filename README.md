@@ -73,7 +73,17 @@ Tabliss 的配置导入是**基于文件**的（bundle 里只有 FileReader/Blob
 - 应用窗口内点击壁纸不会触发浏览器页面跳转（iframe 隔离），点唱机的外点最小化用「点击盾」实现同一效果（脚本 v1.2.48 起）
 - 地址栏导航不受任何脚本控制（浏览器限制）
 - GitHub Pages 有约 10 分钟 CDN 缓存，更新文件后若「没变化」先强刷（Ctrl+Shift+R）
-- Chrome 安装型 PWA 的图标/名称在安装时固化，改动需卸载重装
+
+## 图标更新指南（2026-11-18 实战踩坑，v3→v8 六轮迭代）
+
+任务栏/窗口图标有一条固化链，**改线上图标文件只是第一步**，四层缓存按序处理：
+
+1. **Chrome HTTP 缓存锁旧图（死结）**：manifest 图标 URL 不变时，重装 PWA 也只会从 Chrome 缓存拿旧 PNG 重新生成旧 ICO——手动改文件会被 Chrome 校验（`.ico.md5` 伴生文件，二进制 md5）后重新拉取覆盖。**根治 = 图标文件换新 URL**（本次 icon-\* → appicon-\*，manifest/favicon/SW/deploy.sh 同步改），URL 变了缓存必然失效
+2. **Chrome 进程内存**：运行中 PWA 窗口的任务栏图标由 Chrome 进程动态提供（不走快捷方式），必须**完全退出 Chrome**（`taskkill /F /IM chrome.exe`，桌面版 Chrome 有 23 个进程含后台常驻，关窗口不够）后冷启动才重新读盘
+3. **Chrome 图标缓存残留**：`User Data/Default/Web Applications/_crx_<appid>/`（ICO+md5）、`Web Applications/Manifest Resources/<appid>/`（manifest 图标副本）、`JumpListIcons*`——冷启动前删掉对应部分
+4. **Windows 图标缓存**：`%LOCALAPPDATA%\IconCache.db` + `%LOCALAPPDATA%\Microsoft\Windows\Explorer\iconcache_*.db`。**坑：WSL 调 `cmd /c "del %LOCALAPPDATA%\..."` 会静默失败**（变量展开/文件锁，错误被 2>nul 吞掉，文件实际没删），必须 kill explorer 后用 WSL `rm` 直接删并 `ls` 验证为 0，再启动 explorer
+
+图标本体规格：从原始 music.png 用正圆蒙版（半径取球体实边 404，蒙版边必须落在实心球内，贴光晕过渡带会出现「圆旁多余蓝色」）抠出球体去光晕，占画布 80% 居中，透明底。Chrome 安装时将 PNG 转 ICO（多尺寸 16-256）存入 `_crx_<appid>/`。
 
 ## 相关
 
