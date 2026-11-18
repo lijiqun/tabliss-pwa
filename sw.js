@@ -1,6 +1,6 @@
 // 最小 Service Worker：仅为满足 Chrome PWA 安装条件（需注册 + fetch handler）。
 // 壳页自身离线兜底；Tabliss iframe 的请求照常走网络，不缓存。
-const SHELL = 'tabliss-shell-v6';   // v6：正圆蒙版只保留球体本体，光晕全部去除（任务栏纯圆）
+const SHELL = 'tabliss-shell-v7';   // v7：蒙版半径收紧到球体实边（404<411），去除圆内缘光晕过渡残留
 const SHELL_FILES = ['index.html', 'pwa.json', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', (e) => {
