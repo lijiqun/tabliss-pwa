@@ -1,6 +1,6 @@
 // 最小 Service Worker：仅为满足 Chrome PWA 安装条件（需注册 + fetch handler）。
 // 壳页自身离线兜底；Tabliss iframe 的请求照常走网络，不缓存。
-const SHELL = 'tabliss-shell-v2';
+const SHELL = 'tabliss-shell-v3';   // v3：图标加安全边距（圆形不再贴边被容器裁切）
 const SHELL_FILES = ['index.html', 'pwa.json', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', (e) => {

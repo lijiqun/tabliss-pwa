@@ -26,6 +26,8 @@ Tabliss 原站（web.tabliss.io）有壁纸安装清单但缺 Service Worker，C
 | `sw.js` | 最小 Service Worker（Chrome 安装的硬性条件；导航强制绕缓存拿最新壳页，离线兜底） |
 | `icon-192.png` / `icon-512.png` | 应用图标（Chrome 安装要求 ≥144px，两档） |
 | `.nojekyll` | GitHub Pages 跳过 Jekyll 处理 |
+| `tabliss.json` | Tabliss 导出的配置（长沙天气 / 24 小时制时钟 / Unsplash 壁纸话题），可下载后导入 Tabliss |
+| `deploy.sh` | 部署脚本：同步到部署仓库并推送（临时克隆、用完即删） |
 
 ## 本地开发
 
@@ -37,16 +39,28 @@ python -m http.server 8000
 
 ## 部署 / 更新
 
-本仓库即部署源（GitHub Pages 自动发布 `main` 分支根目录）：
+**本目录是真源**，部署目标是独立仓库 `lijiqun/tabliss-pwa`（GitHub Pages 自动发布其 `main` 分支）：
 
-1. 改文件 → `git push origin main`
-2. 约 1 分钟后线上生效
+```bash
+# 改完本目录的文件后
+./deploy.sh
+```
+
+脚本会临时克隆部署仓库 → 覆盖部署文件 → 提交推送 → 删除临时目录（不留本地工作副本）。约 1 分钟后线上生效。
 
 | 改什么 | 生效方式 |
 |---|---|
 | 主题色（`pwa.json` 的 `theme_color` + `index.html` 的 `<meta theme-color>`，两处同步） | 应用窗口 Ctrl+Shift+R 强刷 |
 | 应用图标 | **卸载重装**（Chrome 安装时固化图标，刷新不更新） |
 | 应用名 | 卸载重装（`name` 用于安装确认与系统列表，`short_name` 用于任务栏/开始菜单磁贴） |
+
+## Tabliss 配置（tabliss.json）
+
+Tabliss 的配置导入是**基于文件**的（bundle 里只有 FileReader/Blob 实现，无 URL 导入参数），所以：
+
+1. 配置已托管在 https://lijiqun.github.io/tabliss-pwa/tabliss.json
+2. 在**任意 web.tabliss.io 标签页**（或应用窗口内）打开 Tabliss 设置 → Import → 选择该文件导入一次
+3. Tabliss 存入 web.tabliss.io 域的 localStorage → 同源同浏览器配置共享，**应用窗口之后每次启动自动套用**（天气城市、时钟样式、壁纸来源全部生效）
 
 ## 权限说明
 
