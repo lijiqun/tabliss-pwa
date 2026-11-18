@@ -24,7 +24,8 @@ Tabliss 原站（web.tabliss.io）有壁纸安装清单但缺 Service Worker，C
 | `index.html` | 壳页：iframe 嵌 web.tabliss.io + theme-color + SW 注册 |
 | `pwa.json` | 安装清单（应用名 / 图标 / standalone 窗口模式 / 主题色） |
 | `sw.js` | 最小 Service Worker（Chrome 安装的硬性条件；导航强制绕缓存拿最新壳页，离线兜底） |
-| `icon-192.png` / `icon-512.png` | 应用图标（Chrome 安装要求 ≥144px，两档） |
+| `appicon-192.png` / `appicon-512.png` | 应用图标（Chrome 安装要求 ≥144px，两档；正圆蒙版抠球体、占画布 100%，规格见「图标更新指南」） |
+| `vendor/tabliss-main.zip` | 上游 Tabliss 源码快照（joelshepherd/tabliss main，tabliss 2.6.0，2026-11-18 存档——上游已停更）。自托管时解压此包，`npm install` 后 `npm run build:web`，构建产物放本仓库并改 `index.html` 为同源引用（详见「已知边界」跨域限制说明） |
 | `.nojekyll` | GitHub Pages 跳过 Jekyll 处理 |
 | `tabliss.json` | Tabliss 导出的配置（长沙天气 / 24 小时制时钟 / Unsplash 壁纸话题），可下载后导入 Tabliss |
 | `deploy.sh` | 部署脚本：同步到部署仓库并推送（临时克隆、用完即删） |
@@ -74,7 +75,7 @@ Tabliss 的配置导入是**基于文件**的（bundle 里只有 FileReader/Blob
 - 地址栏导航不受任何脚本控制（浏览器限制）
 - GitHub Pages 有约 10 分钟 CDN 缓存，更新文件后若「没变化」先强刷（Ctrl+Shift+R）
 
-## 图标更新指南（2026-11-18 实战踩坑，v3→v8 六轮迭代）
+## 图标更新指南（2026-11-18 实战踩坑，v3→v10 十轮迭代）
 
 任务栏/窗口图标有一条固化链，**改线上图标文件只是第一步**，四层缓存按序处理：
 
@@ -83,7 +84,64 @@ Tabliss 的配置导入是**基于文件**的（bundle 里只有 FileReader/Blob
 3. **Chrome 图标缓存残留**：`User Data/Default/Web Applications/_crx_<appid>/`（ICO+md5）、`Web Applications/Manifest Resources/<appid>/`（manifest 图标副本）、`JumpListIcons*`——冷启动前删掉对应部分
 4. **Windows 图标缓存**：`%LOCALAPPDATA%\IconCache.db` + `%LOCALAPPDATA%\Microsoft\Windows\Explorer\iconcache_*.db`。**坑：WSL 调 `cmd /c "del %LOCALAPPDATA%\..."` 会静默失败**（变量展开/文件锁，错误被 2>nul 吞掉，文件实际没删），必须 kill explorer 后用 WSL `rm` 直接删并 `ls` 验证为 0，再启动 explorer
 
-图标本体规格：从原始 music.png 用正圆蒙版（半径取球体实边 404，蒙版边必须落在实心球内，贴光晕过渡带会出现「圆旁多余蓝色」）抠出球体去光晕，占画布 80% 居中，透明底。Chrome 安装时将 PNG 转 ICO（多尺寸 16-256）存入 `_crx_<appid>/`。
+### 改图标操作序列（照抄可用，每步带验证）
+
+```bash
+cd "/mnt/e/claudecodeworkspace/userscript_dev/YouTube音频点唱机/tabliss-pwa"
+
+# ① 生成图标本体（正圆蒙版抠球，占比参数 SIZE_RATIO 按需调，当前 100%）
+python3 -c "
+from PIL import Image, ImageDraw, ImageChops
+src = Image.open('/mnt/e/claudecodeworkspace/userscript_dev/YouTube音频点唱机/music.png').convert('RGBA')
+cx, cy, r = 625, 617, 404
+pad = 3
+crop = src.crop((cx-r-pad, cy-r-pad, cx+r+pad, cy+r+pad))
+ss = 4
+m = Image.new('L', (crop.width*ss, crop.height*ss), 0)
+d = ImageDraw.Draw(m)
+d.ellipse([pad*ss, pad*ss, (pad+2*r)*ss, (pad+2*r)*ss], fill=255)
+m = m.resize(crop.size, Image.LANCZOS)
+crop.putalpha(ImageChops.multiply(crop.split()[3], m))
+RATIO = 1.00
+for f, size in [('appicon-192.png',192),('appicon-512.png',512)]:
+    inner = int(size * RATIO)
+    content = crop.resize((inner, inner), Image.LANCZOS)
+    canvas = Image.new('RGBA', (size, size), (0,0,0,0))
+    canvas.paste(content, ((size-inner)//2, (size-inner)//2), content)
+    canvas.save(f)
+print('done')"
+# 验证①：bbox 占比应符合 RATIO
+
+# ② 部署到 Pages
+./deploy.sh
+
+# ③ 覆盖 Chrome 内部 ICO + 同步二进制 md5（否则被 Chrome 重新拉取覆盖回去）
+python3 -c "
+from PIL import Image
+import hashlib, shutil
+im = Image.open('appicon-512.png').convert('RGBA')
+im.save('/tmp/app.ico', sizes=[(16,16),(24,24),(32,32),(48,48),(64,64),(128,128),(256,256)])
+base = '/mnt/c/Users/x1c/AppData/Local/Google/Chrome/User Data/Default/Web Applications/_crx_opkllaokcikfngifdjcbfjfemebbkghe/YT音频点唱'
+shutil.copy('/tmp/app.ico', base + '.ico')
+data = open(base + '.ico','rb').read()
+open(base + '.ico.md5','wb').write(hashlib.md5(data).digest())"
+
+# ④ 完全退出 Chrome（窗口图标来自进程内存；仅当窗口图标未更新时需要）
+/mnt/c/Windows/System32/taskkill.exe /F /IM chrome.exe
+
+# ⑤ 清 Windows 图标缓存——必须 WSL rm + 事后验证（cmd del 在此场景静默失败！）
+/mnt/c/Windows/System32/taskkill.exe /F /IM explorer.exe
+rm -f "/mnt/c/Users/x1c/AppData/Local/IconCache.db"
+rm -f /mnt/c/Users/x1c/AppData/Local/Microsoft/Windows/Explorer/iconcache_*
+ls /mnt/c/Users/x1c/AppData/Local/Microsoft/Windows/Explorer/ | grep -c iconcache   # 必须=0，否则删除失败
+/mnt/c/Windows/System32/cmd.exe /c "start explorer.exe"
+
+# ⑥ 重新打开点唱机窗口 → 任务栏即新图标
+```
+
+**换 URL 场景**（图标内容大改/Chrome 缓存死锁时）：`icon-*` 式改名同步改 `pwa.json`/`index.html`/`sw.js` 文件列表/`deploy.sh` FILES，然后卸载重装 PWA。
+
+图标本体规格：从原始 music.png 用正圆蒙版（半径取球体实边 404，蒙版边必须落在实心球内，贴光晕过渡带会出现「圆旁多余蓝色」）抠出球体去光晕，占画布 100%（用户逐档放大后选定），透明底。Chrome 安装时将 PNG 转 ICO（多尺寸 16-256）存入 `_crx_<appid>/`。
 
 ## 相关
 
